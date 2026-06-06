@@ -22,37 +22,6 @@
       color: #1a1a1a;
     }
 
-    .page-header {
-      width: 100%;
-      background: white;
-      border-bottom: 1px solid #dde1e7;
-      padding: 14px 32px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      position: fixed;
-      top: 0;
-    }
-
-    .page-header .logo-dot {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #4285f4, #34a853);
-    }
-
-    .page-header .site-name {
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: #202124;
-    }
-
-    .page-header .site-url {
-      font-size: 0.8rem;
-      color: #5f6368;
-      margin-left: 4px;
-    }
-
     .card {
       background: white;
       border: 1px solid #dde1e7;
@@ -112,7 +81,6 @@
       gap: 14px;
     }
 
-    /* Checkbox area — button will overlay this */
     .checkbox-area {
       position: relative;
       width: 28px;
@@ -123,9 +91,8 @@
     .checkbox-bg {
       width: 28px;
       height: 28px;
-      border: 2px solid #bdc1c6;
       border-radius: 3px;
-      background: white;
+      background: transparent;
     }
 
     .captcha-label {
@@ -154,8 +121,8 @@
       line-height: 1.3;
     }
 
-    /* The elusive button — absolutely positioned over the checkbox */
-    #shy-btn {
+    /* Shy buttons — float freely over the page */
+    .shy-btn {
       position: fixed;
       width: 28px;
       height: 28px;
@@ -164,37 +131,16 @@
       background: white;
       cursor: pointer;
       transition: left 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  top 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                  top  0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  opacity 0.4s ease;
       z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      opacity: 0;        /* start invisible; btn2 fades in after 20s */
+      pointer-events: none;
     }
 
-    #shy-btn::after {
-      content: '';
-      display: none;
-      width: 10px;
-      height: 10px;
-      background: #4285f4;
-      border-radius: 1px;
-    }
-
-    #shy-btn.checked {
-      background: #4285f4;
-      border-color: #4285f4;
-    }
-
-    #shy-btn.checked::after {
-      display: block;
-      background: white;
-      width: 14px;
-      height: 10px;
-      border-radius: 0;
-      background: none;
-      border-left: 3px solid white;
-      border-bottom: 3px solid white;
-      transform: rotate(-45deg) translateY(-2px);
+    .shy-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     /* Tooltip */
@@ -230,11 +176,10 @@
     }
 
     .attempts-label {
-      font-size: 0.78rem;
-      color: #ea4335;
+      font-size: 1.1rem;
       text-align: center;
       margin-top: 12px;
-      min-height: 18px;
+      min-height: 20px;
       transition: opacity 0.3s;
       opacity: 0;
     }
@@ -242,42 +187,9 @@
     .attempts-label.show {
       opacity: 1;
     }
-
-    .success-overlay {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0 0;
-    }
-
-    .success-overlay.show {
-      display: flex;
-    }
-
-    .success-check {
-      font-size: 2.2rem;
-    }
-
-    .success-msg {
-      font-size: 0.95rem;
-      color: #34a853;
-      font-weight: 600;
-    }
-
-    .success-sub {
-      font-size: 0.8rem;
-      color: #5f6368;
-    }
   </style>
 </head>
 <body>
-
-  <header class="page-header">
-    <div class="logo-dot"></div>
-    <span class="site-name">accounts.example.com</span>
-    <span class="site-url">· Secure</span>
-  </header>
 
   <div id="tooltip"></div>
 
@@ -301,7 +213,6 @@
           <span class="captcha-label">I'm not a robot</span>
         </div>
         <div class="captcha-right">
-          <!-- reCAPTCHA-style logo (hand-drawn SVG) -->
           <svg class="captcha-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <path d="M32 4 L58 18 L58 46 L32 60 L6 46 L6 18 Z" fill="#f1f3f4" stroke="#dadce0" stroke-width="2"/>
             <path d="M32 14 a18 18 0 0 1 15.6 9" stroke="#4285f4" stroke-width="4" fill="none" stroke-linecap="round"/>
@@ -316,114 +227,126 @@
 
       <p class="attempts-label" id="attempts-label"></p>
     </div>
-
-    <div class="success-overlay" id="success-overlay">
-      <div class="success-check">✅</div>
-      <div class="success-msg">Verification complete</div>
-      <div class="success-sub">You may now continue.</div>
-    </div>
-
-    <p class="footer-note">
-      Protected by reCAPTCHA &nbsp;·&nbsp;
-      <a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a>
-    </p>
   </div>
 
-  <!-- The shy button — floats freely over the page -->
-  <button id="shy-btn" aria-label="I'm not a robot checkbox"></button>
+  <!-- First shy button (starts visible). The rest are created by JS. -->
+  <button id="btn1" class="shy-btn visible" aria-label="I'm not a robot checkbox"></button>
 
   <script>
-    const btn = document.getElementById('shy-btn');
-    const tooltip = document.getElementById('tooltip');
+    const tooltip       = document.getElementById('tooltip');
     const attemptsLabel = document.getElementById('attempts-label');
-    const successOverlay = document.getElementById('success-overlay');
-    const mainContent = document.getElementById('main-content');
-    const checkboxBg = document.getElementById('checkbox-bg');
 
-    const FLEE_RADIUS = 100;
-    const FLEE_DISTANCE = 140;
+    const FLEE_RADIUS   = 100;  // how close the cursor gets before a button runs
+    const FLEE_DISTANCE = 140;  // how far it jumps each time
+    const MAX_BUTTONS   = 3;    // cap at 3 boxes total
+    const SPAWN_EVERY   = 5000; // a new box every 5 seconds (ms)
 
-    let btnX, btnY;
-    let misses = 0;
-    let verified = false;
+    // Each button is an object: { el, x, y, angleOffset }
+    // angleOffset spreads the boxes so they don't flee in identical directions.
+    // We use a different angle for each — spread evenly around the circle.
+    const buttons = [];
 
-    const taunts = ["🤖"];
+    function createButton() {
+      const el = document.createElement('button');
+      el.className = 'shy-btn';
+      el.setAttribute('aria-label', "I'm not a robot checkbox");
+      document.body.appendChild(el);
 
-    function initButtonPosition() {
+      // Place it at the checkbox position to start
       const cbRect = document.getElementById('checkbox-bg').getBoundingClientRect();
-      btnX = cbRect.left + cbRect.width / 2;
-      btnY = cbRect.top + cbRect.height / 2;
-      positionButton();
+      const b = {
+        el,
+        x: cbRect.left + cbRect.width  / 2,
+        y: cbRect.top  + cbRect.height / 2,
+        // Spread angle: divide 360° evenly among however many buttons exist
+        angleOffset: (buttons.length * (360 / MAX_BUTTONS)) * (Math.PI / 180),
+      };
+
+      buttons.push(b);
+      placeButton(b);
+
+      // Small delay before making it visible so it fades in smoothly
+      requestAnimationFrame(() => el.classList.add('visible'));
     }
 
-    function positionButton() {
-      btn.style.left = (btnX - 14) + 'px';
-      btn.style.top  = (btnY - 14) + 'px';
+    function placeButton(b) {
+      b.el.style.left = (b.x - 14) + 'px';
+      b.el.style.top  = (b.y - 14) + 'px';
     }
 
-    initButtonPosition();
-    window.addEventListener('resize', initButtonPosition);
-
-    document.addEventListener('mousemove', (e) => {
-      if (verified) return;
-
-      const cx = btnX;
-      const cy = btnY;
-      const dx = e.clientX - cx;
-      const dy = e.clientY - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < FLEE_RADIUS) {
-        const angle = Math.atan2(dy, dx);
-        let newX = btnX - Math.cos(angle) * FLEE_DISTANCE;
-        let newY = btnY - Math.sin(angle) * FLEE_DISTANCE;
-
-        const pad = 20;
-        newX = Math.max(pad, Math.min(window.innerWidth  - pad, newX));
-        newY = Math.max(pad + 60, Math.min(window.innerHeight - pad, newY));
-
-        btnX = newX;
-        btnY = newY;
-        positionButton();
-
-        // Show tooltip near cursor
-        tooltip.textContent = "🤔 Hold still...";
-        tooltip.style.left = (e.clientX + 14) + 'px';
-        tooltip.style.top  = (e.clientY - 28) + 'px';
-        tooltip.classList.add('show');
-      } else {
-        tooltip.classList.remove('show');
-      }
+    // Wait for the page to fully render before reading the checkbox position.
+    // "window.onload" fires once every image, font, and element is painted —
+    // guaranteeing getBoundingClientRect() returns the real coordinates.
+    window.addEventListener('load', () => {
+      const firstBtn = document.getElementById('btn1');
+      const cbRect0  = document.getElementById('checkbox-bg').getBoundingClientRect();
+      const startX   = cbRect0.left + cbRect0.width  / 2;
+      const startY   = cbRect0.top  + cbRect0.height / 2;
+      buttons.push({ el: firstBtn, x: startX, y: startY, angleOffset: 0 });
+      placeButton(buttons[0]);
     });
 
-    function teleportAway(fromX, fromY) {
+    // ─── Spawn a new button every 5s until we hit MAX_BUTTONS ────────
+    // setInterval is like setTimeout but repeats forever on a set interval.
+    // We check inside if we've hit the max, and if so we stop it with clearInterval.
+    const spawnTimer = setInterval(() => {
+      if (buttons.length >= MAX_BUTTONS) {
+        clearInterval(spawnTimer); // stop the timer — we have enough buttons
+        return;
+      }
+      createButton();
+    }, SPAWN_EVERY);
+
+    // ─── Mouse movement — make every visible button flee ─────────────
+    document.addEventListener('mousemove', (e) => {
+      buttons.forEach(b => {
+        if (!b.el.classList.contains('visible')) return;
+
+        const dx   = e.clientX - b.x;
+        const dy   = e.clientY - b.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < FLEE_RADIUS) {
+          const angle = Math.atan2(dy, dx) + b.angleOffset;
+          const pad   = 20;
+
+          let newX = Math.max(pad, Math.min(window.innerWidth  - pad, b.x - Math.cos(angle) * FLEE_DISTANCE));
+          let newY = Math.max(pad, Math.min(window.innerHeight - pad, b.y - Math.sin(angle) * FLEE_DISTANCE));
+
+          b.x = newX;
+          b.y = newY;
+          placeButton(b);
+        }
+      });
+    });
+
+    // ─── Clicks — show 🤖 and teleport all visible buttons ───────────
+    function teleportButton(b, fromX, fromY) {
       const pad = 20;
-      const topPad = 80;
       let newX, newY;
-      // Keep trying until we land far enough from the click
       do {
         newX = pad + Math.random() * (window.innerWidth  - pad * 2);
-        newY = topPad + Math.random() * (window.innerHeight - topPad - pad);
+        newY = pad + Math.random() * (window.innerHeight - pad * 2);
       } while (Math.hypot(newX - fromX, newY - fromY) < 200);
-      btnX = newX;
-      btnY = newY;
-      // Disable transition briefly so it snaps instantly
-      btn.style.transition = 'none';
-      positionButton();
-      requestAnimationFrame(() => {
-        btn.style.transition = '';
-      });
+
+      b.x = newX;
+      b.y = newY;
+      b.el.style.transition = 'none';
+      placeButton(b);
+      requestAnimationFrame(() => { b.el.style.transition = ''; });
     }
 
-    // Any click anywhere — taunt and teleport
     document.addEventListener('click', (e) => {
       e.preventDefault();
-      misses++;
-      attemptsLabel.textContent = taunts[0];
+
+      attemptsLabel.textContent = '🤖';
       attemptsLabel.classList.add('show');
       clearTimeout(attemptsLabel._t);
       attemptsLabel._t = setTimeout(() => attemptsLabel.classList.remove('show'), 1200);
-      teleportAway(e.clientX, e.clientY);
+
+      buttons.forEach(b => {
+        if (b.el.classList.contains('visible')) teleportButton(b, e.clientX, e.clientY);
+      });
     });
   </script>
 </body>
