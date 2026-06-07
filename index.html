@@ -458,7 +458,6 @@ const dateVal     = document.getElementById('date-val');
 const liveToggle  = document.getElementById('live-toggle');
 const liveInputs  = document.getElementById('live-inputs');
 const cityInput   = document.getElementById('city-input');
-const apiKeyInput = document.getElementById('api-key-input');
 const timeGroup   = document.getElementById('time-group');
 const bg          = document.getElementById('bg');
 const blob1       = document.getElementById('blob1');
@@ -781,8 +780,6 @@ function setLive(on) {
   document.getElementById('wind-slider').disabled = on;
 
   if (on) {
-    const stored = localStorage.getItem('owm_api_key');
-    if (stored) apiKeyInput.value = stored;
     fetchWeather();
     fetchTimer = setInterval(fetchWeather, 10 * 60 * 1000);
     clockTimer = setInterval(liveTick, 60 * 1000);
@@ -798,9 +795,7 @@ function killLive() { if (live) setLive(false); }
 // ── controls ──────────────────────────────────────────────────────────────────
 liveToggle.addEventListener('click', () => setLive(!live));
 
-[cityInput, apiKeyInput].forEach(el =>
-  el.addEventListener('keydown', e => { if (e.key === 'Enter') fetchWeather(); })
-);
+cityInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchWeather(); });;
 
 timeSlider.addEventListener('input', () => {
   killLive();
