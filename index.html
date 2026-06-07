@@ -349,7 +349,6 @@
       </div>
       <div id="live-inputs">
         <input id="city-input" type="text" placeholder="Denver" value="Denver" spellcheck="false" autocomplete="off" />
-        <input id="api-key-input" type="password" placeholder="OWM API key…" spellcheck="false" autocomplete="off" />
       </div>
     </div>
 
@@ -725,11 +724,9 @@ async function fetchWeather() {
   setStatus('Fetching…');
 
   try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`
-    );
+    const res = await fetch(`/.netlify/functions/weather?city=${encodeURIComponent(city)}`);
 
-    if (res.status === 401) { setStatus('API key not valid yet — wait a few minutes and try again'); return; }
+    if (res.status === 401) { setStatus('API key not configured on server'); return; }
     if (res.status === 404) { setStatus(`City "${city}" not found — check spelling`); return; }
     if (!res.ok) { setStatus(`Error ${res.status} — try again`); return; }
 
