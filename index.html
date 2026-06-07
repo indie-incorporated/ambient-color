@@ -348,7 +348,7 @@
         <button id="live-toggle" class="on"></button>
       </div>
       <div id="live-inputs">
-        <input id="city-input" type="text" placeholder="City…" spellcheck="false" autocomplete="off" />
+        <input id="city-input" type="text" placeholder="Denver" value="Denver" spellcheck="false" autocomplete="off" />
         <input id="api-key-input" type="password" placeholder="OWM API key…" spellcheck="false" autocomplete="off" />
       </div>
     </div>
@@ -715,7 +715,7 @@ function liveTick() {
 
 async function fetchWeather() {
   const key  = localStorage.getItem('owm_api_key') || apiKeyInput.value.trim();
-  const city = cityInput.value.trim() || 'New York';
+  const city = cityInput.value.trim() || 'Denver';
   if (!key) return;
 
   try {
