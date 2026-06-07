@@ -153,7 +153,7 @@
       -webkit-appearance: none;
       width: 100%;
       height: 1px;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.45);
       outline: none;
       cursor: pointer;
     }
@@ -175,9 +175,9 @@
       flex: 1;
       padding: 0.28rem 0;
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.45);
       border-radius: 2px;
-      color: rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.75);
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 0.58rem;
       font-weight: 300;
@@ -773,17 +773,12 @@ function setLive(on) {
   liveToggle.classList.toggle('on', on);
   liveInputs.classList.toggle('visible', on);
 
-  const manualOpacity = on ? '0.35' : '1';
   const manualPointer = on ? 'none' : '';
-  ['time-group', 'date-group'].forEach(id => {
-    document.getElementById(id).style.opacity = manualOpacity;
-  });
+  // when live, only disable pointer events on manual controls — don't dim them
+  // (time, date, wind are still shown as live readouts so they should stay visible)
   ['weather-seg', 'season-seg'].forEach(id => {
-    document.getElementById(id).style.opacity = manualOpacity;
     document.getElementById(id).style.pointerEvents = manualPointer;
   });
-  const wg = document.getElementById('wind-slider').closest('.ctrl-group');
-  wg.style.opacity = manualOpacity;
   document.getElementById('wind-slider').disabled = on;
 
   if (on) {
