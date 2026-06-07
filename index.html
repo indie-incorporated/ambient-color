@@ -717,9 +717,7 @@ function setStatus(msg) {
 }
 
 async function fetchWeather() {
-  const key  = localStorage.getItem('owm_api_key') || apiKeyInput.value.trim();
   const city = cityInput.value.trim() || 'Denver';
-  if (!key) { setStatus('Paste your API key and press Enter'); return; }
 
   setStatus('Fetching…');
 
@@ -731,7 +729,6 @@ async function fetchWeather() {
     if (!res.ok) { setStatus(`Error ${res.status} — try again`); return; }
 
     const d = await res.json();
-    localStorage.setItem('owm_api_key', key);
 
     // local time at city from API (dt is UTC unix, timezone is offset in seconds)
     const localEpoch = (d.dt + d.timezone) * 1000;
@@ -871,8 +868,8 @@ document.getElementById('season-seg').querySelectorAll('button').forEach(b =>
   b.classList.toggle('active', b.dataset.v === season)
 );
 
-// start in manual mode
-render();
+// auto-start live
+setLive(true);
 </script>
 </body>
 </html>
