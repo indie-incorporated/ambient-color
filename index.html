@@ -684,7 +684,7 @@ function render() {
   const { rise, set } = getSunTimes(doy);
   const riseStr = hmmStr(Math.round(rise * 60));
   const setStr  = hmmStr(Math.round(set  * 60));
-  const tempStr = tempC !== null ? ` · ${tempC}°C` : '';
+  const tempStr = tempC !== null ? ` · ${Math.round(tempC * 9/5 + 32)}°F` : '';
   condLine.textContent = `${WEATHER_LABEL[weatherMode]}, ${windL.toLowerCase()}${tempStr} · ☀ ${riseStr}–${setStr}`;
 
   dSeason.textContent  = `${phase} ${seasonName}`;
