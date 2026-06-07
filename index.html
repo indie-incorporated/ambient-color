@@ -758,6 +758,7 @@ async function fetchWeather() {
   } catch (e) {
     setStatus('Network error — are you online?');
     console.warn('Weather fetch failed', e);
+    render(); // fall back to manual state so page isn't black
   }
 }
 
@@ -868,7 +869,9 @@ document.getElementById('season-seg').querySelectorAll('button').forEach(b =>
   b.classList.toggle('active', b.dataset.v === season)
 );
 
-// auto-start live
+// render manual state immediately so page is never black
+render();
+// then try to go live
 setLive(true);
 </script>
 </body>
