@@ -1,353 +1,873 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify you're human</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ambient Color</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+
+    /* ── gradient layers ── */
+    #bg {
+      position: fixed; inset: 0;
+      transition: background 4s ease;
     }
 
-    body {
-      min-height: 100vh;
-      background: #f0f2f5;
+    #blob1, #blob2, #blob3 {
+      position: fixed;
+      border-radius: 50%;
+      mix-blend-mode: screen;
+      transition: background 4s ease;
+    }
+    #blob1 {
+      width: 90vmax; height: 90vmax;
+      top: -20%; left: -15%;
+      filter: blur(90px);
+      opacity: 0.6;
+      animation: swirl1 var(--dur1, 14s) linear infinite;
+    }
+    #blob2 {
+      width: 70vmax; height: 70vmax;
+      bottom: -20%; right: -10%;
+      filter: blur(70px);
+      opacity: 0.55;
+      animation: swirl2 var(--dur2, 8s) linear infinite;
+    }
+    #blob3 {
+      width: 55vmax; height: 55vmax;
+      top: 15%; left: 30%;
+      filter: blur(60px);
+      opacity: 0.45;
+      animation: swirl3 var(--dur3, 5s) linear infinite;
+    }
+
+    /* counterclockwise: top → left → bottom → right → top */
+    @keyframes swirl1 {
+      0%   { transform: translate(  0%,  -8%) scale(1.00); }
+      25%  { transform: translate( -9%,   0%) scale(1.04); }
+      50%  { transform: translate(  0%,   8%) scale(0.97); }
+      75%  { transform: translate(  8%,   0%) scale(1.03); }
+      100% { transform: translate(  0%,  -8%) scale(1.00); }
+    }
+    /* blob2 starts at right — same CCW direction, different phase */
+    @keyframes swirl2 {
+      0%   { transform: translate(  9%,   0%) scale(1.00); }
+      25%  { transform: translate(  0%,  -9%) scale(1.05); }
+      50%  { transform: translate( -9%,   0%) scale(0.96); }
+      75%  { transform: translate(  0%,   8%) scale(1.03); }
+      100% { transform: translate(  9%,   0%) scale(1.00); }
+    }
+    /* blob3 starts at bottom — same CCW direction, tighter orbit */
+    @keyframes swirl3 {
+      0%   { transform: translate(  0%,   7%) scale(1.00); }
+      25%  { transform: translate(  7%,   0%) scale(1.06); }
+      50%  { transform: translate(  0%,  -8%) scale(0.94); }
+      75%  { transform: translate( -7%,   0%) scale(1.04); }
+      100% { transform: translate(  0%,   7%) scale(1.00); }
+    }
+
+    /* ── animated film grain ── */
+    #grain {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.06;
+    }
+
+    /* ── layout grid ── */
+    #ui {
+      position: fixed; inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: 1fr auto;
+      padding: clamp(1.5rem, 3vw, 2.8rem);
+      gap: 0;
+    }
+
+    /* top-left: location + condition */
+    #meta-top {
+      grid-column: 1; grid-row: 1;
+      align-self: start;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: #1a1a1a;
+      gap: 0.5rem;
     }
 
-    .card {
-      background: white;
-      border: 1px solid #dde1e7;
-      border-radius: 12px;
-      padding: 40px 48px;
-      width: 440px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      position: relative;
+    #location-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: clamp(0.6rem, 1vw, 0.72rem);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
     }
 
-    .lock-icon {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 20px;
-      display: block;
+    #condition-line {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-style: normal;
+      font-weight: 300;
+      font-size: clamp(1rem, 2.2vw, 1.5rem);
+      color: rgba(255,255,255,0.82);
+      letter-spacing: 0.02em;
     }
 
-    .card h1 {
-      font-size: 1.35rem;
-      font-weight: 700;
-      text-align: center;
-      color: #202124;
-      margin-bottom: 8px;
+    /* top-right: controls */
+    #controls {
+      grid-column: 2; grid-row: 1;
+      align-self: start;
+      pointer-events: all;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
     }
 
-    .card .subtitle {
-      font-size: 0.88rem;
-      color: #5f6368;
-      text-align: center;
-      margin-bottom: 28px;
-      line-height: 1.5;
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
-    .divider {
-      border: none;
-      border-top: 1px solid #e8eaed;
-      margin: 0 0 24px;
+    .ctrl-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: 0.6rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .ctrl-label span {
+      font-variant-numeric: tabular-nums;
+      opacity: 0.8;
     }
 
-    /* The CAPTCHA widget */
-    .captcha-widget {
-      border: 1px solid #c8cdd4;
-      border-radius: 8px;
-      padding: 18px 16px;
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 1px;
+      background: rgba(255,255,255,0.2);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 0 8px rgba(0,0,0,0.4);
+      transition: transform 0.15s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.4); }
+
+    .seg {
+      display: flex;
+      gap: 2px;
+    }
+    .seg button {
+      flex: 1;
+      padding: 0.28rem 0;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 2px;
+      color: rgba(255,255,255,0.3);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 0.58rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .seg button.active {
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.32);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .ctrl-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: -0.2rem 0;
+    }
+
+    #live-inputs {
+      display: none;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+    #live-inputs.visible { display: flex; }
+
+    #live-inputs input {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 3px;
+      padding: 0.3rem 0.6rem;
+      color: rgba(255,255,255,0.8);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    #live-inputs input::placeholder { color: rgba(255,255,255,0.25); }
+    #live-inputs input:focus { border-color: rgba(255,255,255,0.35); }
+
+    /* live toggle */
+    .live-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #f8f9fa;
+    }
+    #live-toggle {
+      width: 26px; height: 14px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.15);
       position: relative;
-      overflow: visible;
-      min-height: 68px;
+      cursor: pointer;
+      transition: background 0.2s;
     }
-
-    .captcha-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
+    #live-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transition: transform 0.18s, background 0.18s;
     }
+    #live-toggle.on { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.3); }
+    #live-toggle.on::after { transform: translateX(12px); background: white; }
 
-    .checkbox-area {
-      position: relative;
-      width: 28px;
-      height: 28px;
-      flex-shrink: 0;
-    }
-
-    .checkbox-bg {
-      width: 28px;
-      height: 28px;
-      border-radius: 3px;
-      background: transparent;
-    }
-
-    .captcha-label {
-      font-size: 0.95rem;
-      color: #202124;
-      font-weight: 500;
-    }
-
-    .captcha-right {
+    /* bottom-left: giant time */
+    #time-block {
+      grid-column: 1; grid-row: 2;
+      align-self: end;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 4px;
+      gap: 0;
     }
 
-    .captcha-logo {
-      width: 32px;
-      height: 32px;
+    #time-display {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 300;
+      font-size: clamp(6rem, 18vw, 15rem);
+      line-height: 0.88;
+      letter-spacing: -0.02em;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 4px 40px rgba(0,0,0,0.2);
     }
 
-    .captcha-brand {
-      font-size: 0.6rem;
-      color: #80868b;
-      letter-spacing: 0.02em;
-      text-align: center;
-      line-height: 1.3;
+    #date-line {
+      margin-top: 0.6rem;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: clamp(0.6rem, 1vw, 0.72rem);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.38);
     }
 
-    /* Shy buttons — float freely over the page */
-    .shy-btn {
-      position: fixed;
-      width: 28px;
-      height: 28px;
-      border: 2px solid #4285f4;
-      border-radius: 3px;
-      background: white;
-      cursor: pointer;
-      transition: left 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  top  0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  opacity 0.4s ease;
-      z-index: 100;
-      opacity: 0;        /* start invisible; btn2 fades in after 20s */
+    /* bottom-right: data pills */
+    #meta-bottom {
+      grid-column: 2; grid-row: 2;
+      align-self: end;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
       pointer-events: none;
     }
 
-    .shy-btn.visible {
-      opacity: 1;
-      pointer-events: auto;
+    .data-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .data-key {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: 0.58rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+    .data-val {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.9rem, 1.8vw, 1.1rem);
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.75);
     }
 
-    /* Tooltip */
-    #tooltip {
+    /* thin rule across bottom */
+    #rule {
       position: fixed;
-      background: #202124;
-      color: white;
-      font-size: 0.75rem;
-      padding: 6px 10px;
-      border-radius: 6px;
-      white-space: nowrap;
+      bottom: clamp(1.5rem, 3vw, 2.8rem);
+      left: clamp(1.5rem, 3vw, 2.8rem);
+      right: clamp(1.5rem, 3vw, 2.8rem);
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      z-index: 20;
       pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 200;
-    }
-
-    #tooltip.show {
-      opacity: 1;
-    }
-
-    .footer-note {
-      margin-top: 20px;
-      font-size: 0.78rem;
-      color: #9aa0a6;
-      text-align: center;
-      line-height: 1.6;
-    }
-
-    .footer-note a {
-      color: #4285f4;
-      text-decoration: none;
-    }
-
-    .attempts-label {
-      font-size: 1.1rem;
-      text-align: center;
-      margin-top: 12px;
-      min-height: 20px;
-      transition: opacity 0.3s;
-      opacity: 0;
-    }
-
-    .attempts-label.show {
-      opacity: 1;
     }
   </style>
 </head>
 <body>
 
-  <div id="tooltip"></div>
+<div id="bg"></div>
+<div id="blob1"></div>
+<div id="blob2"></div>
+<div id="blob3"></div>
+<canvas id="grain"></canvas>
 
-  <div class="card">
-    <svg class="lock-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="22" width="32" height="22" rx="4" fill="#e8f0fe" stroke="#4285f4" stroke-width="2"/>
-      <path d="M16 22V16a8 8 0 0116 0v6" stroke="#4285f4" stroke-width="2.5" stroke-linecap="round"/>
-      <circle cx="24" cy="33" r="3" fill="#4285f4"/>
-    </svg>
+<div id="rule"></div>
 
-    <h1>Verify you're human</h1>
-    <p class="subtitle">Before continuing, we need to confirm<br>you're not an automated bot.</p>
-    <hr class="divider">
+<div id="ui">
 
-    <div id="main-content">
-      <div class="captcha-widget" id="captcha-widget">
-        <div class="captcha-left">
-          <div class="checkbox-area">
-            <div class="checkbox-bg" id="checkbox-bg"></div>
-          </div>
-          <span class="captcha-label">I'm not a robot</span>
-        </div>
-        <div class="captcha-right">
-          <svg class="captcha-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-            <path d="M32 4 L58 18 L58 46 L32 60 L6 46 L6 18 Z" fill="#f1f3f4" stroke="#dadce0" stroke-width="2"/>
-            <path d="M32 14 a18 18 0 0 1 15.6 9" stroke="#4285f4" stroke-width="4" fill="none" stroke-linecap="round"/>
-            <path d="M32 14 a18 18 0 0 0-15.6 9" stroke="#34a853" stroke-width="4" fill="none" stroke-linecap="round"/>
-            <path d="M16.4 23 a18 18 0 0 0 0 18" stroke="#fbbc05" stroke-width="4" fill="none" stroke-linecap="round"/>
-            <path d="M47.6 23 a18 18 0 0 1 0 18" stroke="#ea4335" stroke-width="4" fill="none" stroke-linecap="round"/>
-            <circle cx="32" cy="32" r="5" fill="#5f6368"/>
-          </svg>
-          <div class="captcha-brand">reCAPTCHA<br>Privacy · Terms</div>
-        </div>
+  <!-- top-left -->
+  <div id="meta-top">
+    <div id="location-label">Ambient Color Study</div>
+    <div id="condition-line">Clear sky, still air</div>
+  </div>
+
+  <!-- top-right -->
+  <div id="controls">
+
+    <div class="ctrl-group">
+      <div class="ctrl-label live-row">
+        Live
+        <button id="live-toggle" class="on"></button>
       </div>
+      <div id="live-inputs">
+        <input id="city-input" type="text" placeholder="City…" spellcheck="false" autocomplete="off" />
+        <input id="api-key-input" type="password" placeholder="OWM API key…" spellcheck="false" autocomplete="off" />
+      </div>
+    </div>
 
-      <p class="attempts-label" id="attempts-label"></p>
+    <div class="ctrl-divider"></div>
+
+    <div class="ctrl-group" id="time-group">
+      <div class="ctrl-label">Time <span id="time-val">12:00</span></div>
+      <input type="range" id="time-slider" min="0" max="1439" value="720" />
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Weather</div>
+      <div class="seg" id="weather-seg">
+        <button data-v="clear" class="active">Clear</button>
+        <button data-v="cloud">Cloud</button>
+        <button data-v="rain">Rain</button>
+        <button data-v="snow">Snow</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Season</div>
+      <div class="seg" id="season-seg">
+        <button data-v="spring">Spr</button>
+        <button data-v="summer" class="active">Sum</button>
+        <button data-v="autumn">Aut</button>
+        <button data-v="winter">Win</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Wind <span id="wind-val">5 m/s</span></div>
+      <input type="range" id="wind-slider" min="0" max="30" value="5" step="0.5" />
+    </div>
+
+    <div class="ctrl-group" id="date-group">
+      <div class="ctrl-label">Date <span id="date-val">—</span></div>
+      <input type="range" id="date-slider" min="1" max="365" value="1" />
+    </div>
+
+  </div>
+
+  <!-- bottom-left -->
+  <div id="time-block">
+    <div id="time-display">12:00</div>
+    <div id="date-line">—</div>
+  </div>
+
+  <!-- bottom-right -->
+  <div id="meta-bottom">
+    <div class="data-row">
+      <div class="data-key">Season</div>
+      <div class="data-val" id="d-season">Summer</div>
+    </div>
+    <div class="data-row">
+      <div class="data-key">Condition</div>
+      <div class="data-val" id="d-weather">Clear</div>
+    </div>
+    <div class="data-row">
+      <div class="data-key">Wind</div>
+      <div class="data-val" id="d-wind">5 m/s</div>
     </div>
   </div>
 
-  <!-- First shy button (starts visible). The rest are created by JS. -->
-  <button id="btn1" class="shy-btn visible" aria-label="I'm not a robot checkbox"></button>
+</div>
 
-  <script>
-    const tooltip       = document.getElementById('tooltip');
-    const attemptsLabel = document.getElementById('attempts-label');
+<script>
+// ── film grain ────────────────────────────────────────────────────────────────
+const grainCanvas = document.getElementById('grain');
+const gCtx = grainCanvas.getContext('2d');
 
-    const FLEE_RADIUS   = 100;  // how close the cursor gets before a button runs
-    const FLEE_DISTANCE = 140;  // how far it jumps each time
-    const MAX_BUTTONS   = 3;    // cap at 3 boxes total
-    const SPAWN_EVERY   = 5000; // a new box every 5 seconds (ms)
+function resizeGrain() {
+  grainCanvas.width  = window.innerWidth;
+  grainCanvas.height = window.innerHeight;
+}
+resizeGrain();
+window.addEventListener('resize', resizeGrain);
 
-    // Each button is an object: { el, x, y, angleOffset }
-    // angleOffset spreads the boxes so they don't flee in identical directions.
-    // We use a different angle for each — spread evenly around the circle.
-    const buttons = [];
+function drawGrain() {
+  const w = grainCanvas.width;
+  const h = grainCanvas.height;
+  const img = gCtx.createImageData(w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (Math.random() * 255) | 0;
+    d[i] = d[i+1] = d[i+2] = v;
+    d[i+3] = 255;
+  }
+  gCtx.putImageData(img, 0, 0);
+  requestAnimationFrame(drawGrain);
+}
+drawGrain();
 
-    function createButton() {
-      const el = document.createElement('button');
-      el.className = 'shy-btn';
-      el.setAttribute('aria-label', "I'm not a robot checkbox");
-      document.body.appendChild(el);
+// ── state ─────────────────────────────────────────────────────────────────────
+let live            = false; // true = driven by OWM API
+let timeMinutes     = 720;
+let weatherMode     = 'clear';
+let season          = 'summer';
+let windSpeed       = 5;
+let manualDayOfYear = null;
+let clockTimer      = null;
+let fetchTimer      = null;
 
-      // Place it at the checkbox position to start
-      const cbRect = document.getElementById('checkbox-bg').getBoundingClientRect();
-      const b = {
-        el,
-        x: cbRect.left + cbRect.width  / 2,
-        y: cbRect.top  + cbRect.height / 2,
-        // Spread angle: divide 360° evenly among however many buttons exist
-        angleOffset: (buttons.length * (360 / MAX_BUTTONS)) * (Math.PI / 180),
-      };
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const dateSlider  = document.getElementById('date-slider');
+const dateVal     = document.getElementById('date-val');
+const liveToggle  = document.getElementById('live-toggle');
+const liveInputs  = document.getElementById('live-inputs');
+const cityInput   = document.getElementById('city-input');
+const apiKeyInput = document.getElementById('api-key-input');
+const timeGroup   = document.getElementById('time-group');
+const bg          = document.getElementById('bg');
+const blob1       = document.getElementById('blob1');
+const blob2       = document.getElementById('blob2');
+const blob3       = document.getElementById('blob3');
+const timeDisplay = document.getElementById('time-display');
+const dateLine    = document.getElementById('date-line');
+const condLine    = document.getElementById('condition-line');
+const dSeason     = document.getElementById('d-season');
+const dWeather    = document.getElementById('d-weather');
+const dWind       = document.getElementById('d-wind');
+const timeSlider  = document.getElementById('time-slider');
+const timeVal     = document.getElementById('time-val');
+const windSlider  = document.getElementById('wind-slider');
+const windVal     = document.getElementById('wind-val');
+// ── color math ────────────────────────────────────────────────────────────────
 
-      buttons.push(b);
-      placeButton(b);
+// Colorado, Denver ~39.5°N
+const CO_LAT = 39.5 * Math.PI / 180;
 
-      // Small delay before making it visible so it fades in smoothly
-      requestAnimationFrame(() => el.classList.add('visible'));
-    }
+// Returns sunrise and sunset in decimal hours (local solar time ≈ clock time)
+// Uses standard declination + hour angle formula
+function getSunTimes(doy) {
+  const decl = -23.45 * (Math.PI / 180) *
+    Math.cos((2 * Math.PI / 365) * (doy + 10));
+  const cosHA = -Math.tan(CO_LAT) * Math.tan(decl);
+  const halfDay = Math.acos(Math.max(-1, Math.min(1, cosHA))) * (12 / Math.PI);
+  return { rise: 12 - halfDay, set: 12 + halfDay };
+}
 
-    function placeButton(b) {
-      b.el.style.left = (b.x - 14) + 'px';
-      b.el.style.top  = (b.y - 14) + 'px';
-    }
+// Brightness 0–1 based on time of day and Colorado solar arc for that doy
+function timeToBri(minutes, doy) {
+  const h = minutes / 60;
+  const { rise, set } = getSunTimes(doy);
 
-    // Wait for the page to fully render before reading the checkbox position.
-    // "window.onload" fires once every image, font, and element is painted —
-    // guaranteeing getBoundingClientRect() returns the real coordinates.
-    window.addEventListener('load', () => {
-      const firstBtn = document.getElementById('btn1');
-      const cbRect0  = document.getElementById('checkbox-bg').getBoundingClientRect();
-      const startX   = cbRect0.left + cbRect0.width  / 2;
-      const startY   = cbRect0.top  + cbRect0.height / 2;
-      buttons.push({ el: firstBtn, x: startX, y: startY, angleOffset: 0 });
-      placeButton(buttons[0]);
+  const NIGHT      = 0.06;  // deep night floor
+  const DAWN_DUR   = 1.4;   // hours of civil twilight each side
+
+  // Deep night
+  if (h <= rise - DAWN_DUR || h >= set + DAWN_DUR) return NIGHT;
+
+  // Daytime arc — sinusoidal peak at solar noon
+  if (h >= rise && h <= set) {
+    const t = (h - rise) / (set - rise);
+    return NIGHT + (0.74 - NIGHT) * Math.pow(Math.sin(t * Math.PI), 0.45);
+  }
+
+  // Pre-dawn twilight
+  if (h < rise) {
+    const t = (h - (rise - DAWN_DUR)) / DAWN_DUR;
+    return lerp(NIGHT, NIGHT + 0.06, Math.pow(t, 1.8));
+  }
+
+  // Post-sunset twilight
+  const t = (h - set) / DAWN_DUR;
+  return lerp(NIGHT + 0.06, NIGHT, Math.pow(t, 0.6));
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpHue(a, b, t) {
+  let d = ((b - a) % 360 + 360) % 360;
+  if (d > 180) d -= 360;
+  return ((a + d * t) % 360 + 360) % 360;
+}
+
+// Each season has early and late palette endpoints.
+// The real calendar date interpolates between them.
+const SEASONS = {
+  spring: {
+    // early: still snowy, barely budding — icy whites, faint green tinge
+    early: { base: 195, b2: 120, b3: 200, sat: 22, briBoost:  0.12 },
+    // late: full bloom — coral tulip, spring green, rose
+    late:  { base:  14, b2: 115, b3: 335, sat: 72, briBoost:  0.08 },
+  },
+  summer: {
+    // early: fresh blue sky, deep summer green, golden light
+    early: { base: 205, b2: 125, b3:  42, sat: 72, briBoost:  0.08 },
+    // late: still warm but golden-coral as days shorten
+    late:  { base: 205, b2:  42, b3: 358, sat: 78, briBoost:  0.10 },
+  },
+  autumn: {
+    // early: green still lingers, yellow-orange beginning
+    early: { base:  68, b2: 112, b3:  38, sat: 68, briBoost:  0.04 },
+    // late: no green, deep brown-orange, first icy whites creeping in
+    late:  { base:  20, b2:  28, b3: 198, sat: 52, briBoost: -0.06 },
+  },
+  winter: {
+    // early Dec: festive aurora — navy, electric teal, crimson
+    early: { base: 225, b2: 165, b3:   5, sat: 78, briBoost: -0.03 },
+    // mid Jan–Feb: deep winter, all snow — icy white, pale blue, near-white
+    mid:   { base: 208, b2: 200, b3: 195, sat:  9, briBoost:  0.10 },
+    // late Mar: aurora returning, still cold but gaining colour
+    late:  { base: 222, b2: 165, b3:   5, sat: 62, briBoost: -0.06 },
+  },
+};
+
+// Day-of-year → which season and how far through it (0 = early, 1 = late)
+function getDayOfYear(date) {
+  return Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+}
+
+function getSeasonInfo(date) {
+  const doy = getDayOfYear(date);
+  const SPRING = 79, SUMMER = 172, AUTUMN = 265, WINTER = 355;
+  if (doy >= SPRING && doy < SUMMER)
+    return { key: 'spring', progress: (doy - SPRING) / (SUMMER - SPRING) };
+  if (doy >= SUMMER && doy < AUTUMN)
+    return { key: 'summer', progress: (doy - SUMMER) / (AUTUMN - SUMMER) };
+  if (doy >= AUTUMN && doy < WINTER)
+    return { key: 'autumn', progress: (doy - AUTUMN) / (WINTER - AUTUMN) };
+  const wLen = (365 - WINTER) + SPRING;
+  const wDay = doy >= WINTER ? doy - WINTER : doy + (365 - WINTER);
+  return { key: 'winter', progress: Math.min(wDay / wLen, 1) };
+}
+
+function interpolatedPalette(key, progress) {
+  const s = SEASONS[key];
+  // if a mid point exists, do piecewise: early→mid (0–0.5), mid→late (0.5–1)
+  if (s.mid) {
+    const a = progress < 0.5 ? s.early : s.mid;
+    const b = progress < 0.5 ? s.mid   : s.late;
+    const t = progress < 0.5 ? progress * 2 : (progress - 0.5) * 2;
+    return {
+      base:     lerpHue(a.base, b.base, t),
+      b2:       lerpHue(a.b2,   b.b2,   t),
+      b3:       lerpHue(a.b3,   b.b3,   t),
+      sat:      lerp(a.sat,      b.sat,      t),
+      briBoost: lerp(a.briBoost, b.briBoost, t),
+    };
+  }
+  return {
+    base:     lerpHue(s.early.base, s.late.base, progress),
+    b2:       lerpHue(s.early.b2,   s.late.b2,   progress),
+    b3:       lerpHue(s.early.b3,   s.late.b3,   progress),
+    sat:      lerp(s.early.sat,      s.late.sat,      progress),
+    briBoost: lerp(s.early.briBoost, s.late.briBoost, progress),
+  };
+}
+
+const WEATHER = {
+  clear: { satMul: 1.00, hueShift:   0 },
+  cloud: { satMul: 0.38, hueShift:  -8 },
+  rain:  { satMul: 0.55, hueShift:  18 },
+  snow:  { satMul: 0.20, hueShift:  30 },
+};
+
+function timeHueOffset(m) {
+  return Math.sin((m / 1440) * Math.PI * 2) * 20;
+}
+
+const WEATHER_LABEL = { clear: 'Clear sky', cloud: 'Overcast', rain: 'Rain', snow: 'Snow' };
+const WIND_LABEL = s => s < 1 ? 'Still air' : s < 4 ? 'Light breeze' : s < 9 ? 'Gentle breeze' : s < 16 ? 'Strong wind' : 'Gale';
+const PHASE_LABEL = t => t < 0.25 ? 'Early' : t < 0.6 ? 'Mid' : 'Late';
+
+function windToDur(s) {
+  const t = Math.min(s, 30) / 30; // 0–1
+  // Full-circle orbit: calm = one lazy revolution in 40s, gale = 4s
+  // Irrational ratios so the three blobs never re-sync
+  const base = 40 - t * 36;
+  document.documentElement.style.setProperty('--dur1', `${(base).toFixed(2)}s`);
+  document.documentElement.style.setProperty('--dur2', `${(base * 0.61).toFixed(2)}s`);
+  document.documentElement.style.setProperty('--dur3', `${(base * 0.38).toFixed(2)}s`);
+}
+
+function hmmStr(m) {
+  const h = Math.floor(m / 60) % 24;
+  const mn = m % 60;
+  return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+}
+
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function dateStr(d) {
+  return `${DAYS[d.getDay()]} — ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// ── render ────────────────────────────────────────────────────────────────────
+function render() {
+  const now = new Date();
+
+  // Build a fake date from the manual day-of-year slider if active
+  let refDate = now;
+  if (manualDayOfYear !== null) {
+    refDate = new Date(now.getFullYear(), 0, manualDayOfYear);
+  }
+
+  const auto = getSeasonInfo(refDate);
+
+  // Season buttons can still override which season is shown;
+  // progress always tracks the (possibly manual) date
+  const activeKey = season;
+  const progress  = (auto.key === activeKey) ? auto.progress : 0.5;
+
+  const pal  = interpolatedPalette(activeKey, progress);
+  const wx   = WEATHER[weatherMode];
+  const doy  = manualDayOfYear || getDayOfYear(refDate);
+  const bri  = Math.max(0.05, Math.min(0.92, timeToBri(timeMinutes, doy) + pal.briBoost));
+
+  const timeOff = timeHueOffset(timeMinutes);
+  const h1 = (pal.base + timeOff + wx.hueShift + 360) % 360;
+  const h2 = (pal.b2   + timeOff * 0.5          + 360) % 360;
+  const h3 = (pal.b3   - timeOff * 0.3          + 360) % 360;
+
+  const sat   = pal.sat * wx.satMul;
+  const bgL   = Math.round(bri * 30);
+  const blobL = Math.round(bri * 62);
+
+  bg.style.background    = `hsl(${h1}, ${Math.round(sat * 0.5)}%, ${bgL}%)`;
+  blob1.style.background = `hsl(${h1}, ${Math.round(sat)}%, ${blobL}%)`;
+  blob2.style.background = `hsl(${h2}, ${Math.round(sat * 0.9)}%, ${Math.round(blobL * 1.08)}%)`;
+  blob3.style.background = `hsl(${h3}, ${Math.round(sat * 0.8)}%, ${Math.round(blobL * 0.85)}%)`;
+
+  windToDur(windSpeed);
+
+  // typography
+  timeDisplay.textContent = hmmStr(timeMinutes);
+  dateLine.textContent = dateStr(refDate);
+
+  const phase = PHASE_LABEL(progress);
+  const seasonName = activeKey.charAt(0).toUpperCase() + activeKey.slice(1);
+  const windL = WIND_LABEL(windSpeed);
+  const { rise, set } = getSunTimes(doy);
+  const riseStr = hmmStr(Math.round(rise * 60));
+  const setStr  = hmmStr(Math.round(set  * 60));
+  condLine.textContent = `${WEATHER_LABEL[weatherMode]}, ${windL.toLowerCase()} · ☀ ${riseStr}–${setStr}`;
+
+  dSeason.textContent  = `${phase} ${seasonName}`;
+  dWeather.textContent = WEATHER_LABEL[weatherMode];
+  dWind.textContent    = `${windSpeed} m/s`;
+}
+
+// ── live mode (time + weather from OWM) ──────────────────────────────────────
+
+function owmCodeToMode(id) {
+  if (id === 800)              return 'clear';
+  if (id >= 801 && id <= 804) return 'cloud';
+  if (id >= 600 && id <= 699) return 'snow';
+  if (id >= 200 && id <= 599) return 'rain';
+  return 'clear';
+}
+
+// called every minute while live, to tick the local clock
+function liveTick() {
+  if (!live) return;
+  // keep timeMinutes in sync with wall clock (live fetch already set the offset)
+  const now = new Date();
+  timeMinutes = now.getHours() * 60 + now.getMinutes();
+  timeSlider.value = timeMinutes;
+  timeVal.textContent = hmmStr(timeMinutes);
+  render();
+}
+
+async function fetchWeather() {
+  const key  = localStorage.getItem('owm_api_key') || apiKeyInput.value.trim();
+  const city = cityInput.value.trim() || 'New York';
+  if (!key) return;
+
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`
+    );
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+
+    localStorage.setItem('owm_api_key', key);
+
+    // local time at city from API  (dt is UTC unix, timezone is offset in seconds)
+    const localEpoch = (d.dt + d.timezone) * 1000;
+    const localDate  = new Date(localEpoch);
+    timeMinutes      = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
+    manualDayOfYear  = null; // use real date
+
+    // weather + wind
+    weatherMode = owmCodeToMode(d.weather[0].id);
+    windSpeed   = Math.round(d.wind.speed * 10) / 10;
+
+    // sync all controls to live values
+    timeSlider.value = timeMinutes;
+    timeVal.textContent = hmmStr(timeMinutes);
+    windSlider.value = windSpeed;
+    windVal.textContent = `${windSpeed} m/s`;
+    document.getElementById('weather-seg').querySelectorAll('button').forEach(b =>
+      b.classList.toggle('active', b.dataset.v === weatherMode));
+    const info = getSeasonInfo(new Date());
+    season = info.key;
+    document.getElementById('season-seg').querySelectorAll('button').forEach(b =>
+      b.classList.toggle('active', b.dataset.v === season));
+    const doy = getDayOfYear(new Date());
+    dateSlider.value = doy;
+    dateVal.textContent = dayOfYearToLabel(doy);
+
+    document.getElementById('location-label').textContent = d.name.toUpperCase();
+    render();
+  } catch (e) {
+    console.warn('Weather fetch failed', e);
+  }
+}
+
+function setLive(on) {
+  live = on;
+  liveToggle.classList.toggle('on', on);
+  liveInputs.classList.toggle('visible', on);
+
+  const manualOpacity = on ? '0.35' : '1';
+  const manualPointer = on ? 'none' : '';
+  ['time-group', 'date-group'].forEach(id => {
+    document.getElementById(id).style.opacity = manualOpacity;
+  });
+  ['weather-seg', 'season-seg'].forEach(id => {
+    document.getElementById(id).style.opacity = manualOpacity;
+    document.getElementById(id).style.pointerEvents = manualPointer;
+  });
+  const wg = document.getElementById('wind-slider').closest('.ctrl-group');
+  wg.style.opacity = manualOpacity;
+  document.getElementById('wind-slider').disabled = on;
+
+  if (on) {
+    const stored = localStorage.getItem('owm_api_key');
+    if (stored) apiKeyInput.value = stored;
+    fetchWeather();
+    fetchTimer = setInterval(fetchWeather, 10 * 60 * 1000);
+    clockTimer = setInterval(liveTick, 60 * 1000);
+  } else {
+    clearInterval(fetchTimer);
+    clearInterval(clockTimer);
+    document.getElementById('location-label').textContent = 'Ambient Color Study';
+  }
+}
+
+function killLive() { if (live) setLive(false); }
+
+// ── controls ──────────────────────────────────────────────────────────────────
+liveToggle.addEventListener('click', () => setLive(!live));
+
+[cityInput, apiKeyInput].forEach(el =>
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') fetchWeather(); })
+);
+
+timeSlider.addEventListener('input', () => {
+  killLive();
+  timeMinutes = parseInt(timeSlider.value);
+  timeVal.textContent = hmmStr(timeMinutes);
+  render();
+});
+
+windSlider.addEventListener('input', () => {
+  killLive();
+  windSpeed = parseFloat(windSlider.value);
+  windVal.textContent = `${windSpeed} m/s`;
+  render();
+});
+
+function makeSegGroup(id, setter) {
+  const group = document.getElementById(id);
+  group.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      killLive();
+      group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setter(btn.dataset.v);
+      render();
     });
+  });
+}
+makeSegGroup('weather-seg', v => weatherMode = v);
+makeSegGroup('season-seg',  v => { season = v; render(); });
 
-    // ─── Spawn a new button every 5s until we hit MAX_BUTTONS ────────
-    // setInterval is like setTimeout but repeats forever on a set interval.
-    // We check inside if we've hit the max, and if so we stop it with clearInterval.
-    const spawnTimer = setInterval(() => {
-      if (buttons.length >= MAX_BUTTONS) {
-        clearInterval(spawnTimer); // stop the timer — we have enough buttons
-        return;
-      }
-      createButton();
-    }, SPAWN_EVERY);
+// Short month names for the date slider label
+const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dayOfYearToLabel(doy) {
+  const d = new Date(new Date().getFullYear(), 0, doy);
+  return `${MON_SHORT[d.getMonth()]} ${d.getDate()}`;
+}
 
-    // ─── Mouse movement — make every visible button flee ─────────────
-    document.addEventListener('mousemove', (e) => {
-      buttons.forEach(b => {
-        if (!b.el.classList.contains('visible')) return;
+dateSlider.addEventListener('input', () => {
+  killLive();
+  manualDayOfYear = parseInt(dateSlider.value);
+  dateVal.textContent = dayOfYearToLabel(manualDayOfYear);
+  // auto-sync season buttons to wherever the slider lands
+  const info = getSeasonInfo(new Date(new Date().getFullYear(), 0, manualDayOfYear));
+  season = info.key;
+  document.getElementById('season-seg').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.v === season);
+  });
+  render();
+});
 
-        const dx   = e.clientX - b.x;
-        const dy   = e.clientY - b.y;
-        const dist = Math.hypot(dx, dy);
+// ── init ──────────────────────────────────────────────────────────────────────
+const now0   = new Date();
+const todayDoy = getDayOfYear(now0);
+dateSlider.value = todayDoy;
+dateVal.textContent = dayOfYearToLabel(todayDoy);
 
-        if (dist < FLEE_RADIUS) {
-          const angle = Math.atan2(dy, dx) + b.angleOffset;
-          const pad   = 20;
+// seed time from system clock
+timeMinutes = now0.getHours() * 60 + now0.getMinutes();
+timeSlider.value = timeMinutes;
+timeVal.textContent = hmmStr(timeMinutes);
 
-          let newX = Math.max(pad, Math.min(window.innerWidth  - pad, b.x - Math.cos(angle) * FLEE_DISTANCE));
-          let newY = Math.max(pad, Math.min(window.innerHeight - pad, b.y - Math.sin(angle) * FLEE_DISTANCE));
+// auto-detect season
+const autoSeason = getSeasonInfo(now0);
+season = autoSeason.key;
+document.getElementById('season-seg').querySelectorAll('button').forEach(b =>
+  b.classList.toggle('active', b.dataset.v === season)
+);
 
-          b.x = newX;
-          b.y = newY;
-          placeButton(b);
-        }
-      });
-    });
-
-    // ─── Clicks — show 🤖 and teleport all visible buttons ───────────
-    function teleportButton(b, fromX, fromY) {
-      const pad = 20;
-      let newX, newY;
-      do {
-        newX = pad + Math.random() * (window.innerWidth  - pad * 2);
-        newY = pad + Math.random() * (window.innerHeight - pad * 2);
-      } while (Math.hypot(newX - fromX, newY - fromY) < 200);
-
-      b.x = newX;
-      b.y = newY;
-      b.el.style.transition = 'none';
-      placeButton(b);
-      requestAnimationFrame(() => { b.el.style.transition = ''; });
-    }
-
-    document.addEventListener('click', (e) => {
-      e.preventDefault();
-
-      attemptsLabel.textContent = '🤖';
-      attemptsLabel.classList.add('show');
-      clearTimeout(attemptsLabel._t);
-      attemptsLabel._t = setTimeout(() => attemptsLabel.classList.remove('show'), 1200);
-
-      buttons.forEach(b => {
-        if (b.el.classList.contains('visible')) teleportButton(b, e.clientX, e.clientY);
-      });
-    });
-  </script>
+// start in manual mode
+render();
+</script>
 </body>
 </html>
