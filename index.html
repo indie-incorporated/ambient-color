@@ -448,6 +448,7 @@ let timeMinutes     = 720;
 let weatherMode     = 'clear';
 let season          = 'summer';
 let windSpeed       = 5;
+let tempC           = null; // live temperature, display-only
 let manualDayOfYear = null;
 let clockTimer      = null;
 let fetchTimer      = null;
@@ -683,7 +684,8 @@ function render() {
   const { rise, set } = getSunTimes(doy);
   const riseStr = hmmStr(Math.round(rise * 60));
   const setStr  = hmmStr(Math.round(set  * 60));
-  condLine.textContent = `${WEATHER_LABEL[weatherMode]}, ${windL.toLowerCase()} · ☀ ${riseStr}–${setStr}`;
+  const tempStr = tempC !== null ? ` · ${tempC}°C` : '';
+  condLine.textContent = `${WEATHER_LABEL[weatherMode]}, ${windL.toLowerCase()}${tempStr} · ☀ ${riseStr}–${setStr}`;
 
   dSeason.textContent  = `${phase} ${seasonName}`;
   dWeather.textContent = WEATHER_LABEL[weatherMode];
@@ -737,6 +739,7 @@ async function fetchWeather() {
 
     weatherMode = owmCodeToMode(d.weather[0].id);
     windSpeed   = Math.round(d.wind.speed * 10) / 10;
+    tempC       = Math.round(d.main.temp);
 
     timeSlider.value = timeMinutes;
     timeVal.textContent = hmmStr(timeMinutes);
