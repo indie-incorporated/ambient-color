@@ -345,7 +345,7 @@
     <div class="ctrl-group">
       <div class="ctrl-label live-row">
         Live
-        <button id="live-toggle" class="on"></button>
+        <button id="live-toggle"></button>
       </div>
       <div id="live-inputs">
         <input id="city-input" type="text" placeholder="Denver" value="Denver" spellcheck="false" autocomplete="off" />
@@ -713,31 +713,38 @@ function liveTick() {
   render();
 }
 
+function setStatus(msg) {
+  document.getElementById('condition-line').textContent = msg;
+}
+
 async function fetchWeather() {
   const key  = localStorage.getItem('owm_api_key') || apiKeyInput.value.trim();
   const city = cityInput.value.trim() || 'Denver';
-  if (!key) return;
+  if (!key) { setStatus('Paste your API key and press Enter'); return; }
+
+  setStatus('Fetching…');
 
   try {
     const res = await fetch(
       `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`
     );
-    if (!res.ok) throw new Error(res.status);
-    const d = await res.json();
 
+    if (res.status === 401) { setStatus('API key not valid yet — wait a few minutes and try again'); return; }
+    if (res.status === 404) { setStatus(`City "${city}" not found — check spelling`); return; }
+    if (!res.ok) { setStatus(`Error ${res.status} — try again`); return; }
+
+    const d = await res.json();
     localStorage.setItem('owm_api_key', key);
 
-    // local time at city from API  (dt is UTC unix, timezone is offset in seconds)
+    // local time at city from API (dt is UTC unix, timezone is offset in seconds)
     const localEpoch = (d.dt + d.timezone) * 1000;
     const localDate  = new Date(localEpoch);
     timeMinutes      = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
-    manualDayOfYear  = null; // use real date
+    manualDayOfYear  = null;
 
-    // weather + wind
     weatherMode = owmCodeToMode(d.weather[0].id);
     windSpeed   = Math.round(d.wind.speed * 10) / 10;
 
-    // sync all controls to live values
     timeSlider.value = timeMinutes;
     timeVal.textContent = hmmStr(timeMinutes);
     windSlider.value = windSpeed;
@@ -755,6 +762,7 @@ async function fetchWeather() {
     document.getElementById('location-label').textContent = d.name.toUpperCase();
     render();
   } catch (e) {
+    setStatus('Network error — are you online?');
     console.warn('Weather fetch failed', e);
   }
 }
