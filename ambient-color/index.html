@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ambient Color</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+
+    /* ── gradient layers ── */
+    #bg {
+      position: fixed; inset: 0;
+      transition: background 4s ease;
+    }
+
+    #blob1, #blob2, #blob3 {
+      position: fixed;
+      border-radius: 50%;
+      mix-blend-mode: screen;
+      transition: background 4s ease;
+    }
+    #blob1 {
+      width: 90vmax; height: 90vmax;
+      top: -20%; left: -15%;
+      filter: blur(90px);
+      opacity: 0.6;
+      animation: swirl1 var(--dur1, 14s) linear infinite;
+    }
+    #blob2 {
+      width: 70vmax; height: 70vmax;
+      bottom: -20%; right: -10%;
+      filter: blur(70px);
+      opacity: 0.55;
+      animation: swirl2 var(--dur2, 8s) linear infinite;
+    }
+    #blob3 {
+      width: 55vmax; height: 55vmax;
+      top: 15%; left: 30%;
+      filter: blur(60px);
+      opacity: 0.45;
+      animation: swirl3 var(--dur3, 5s) linear infinite;
+    }
+
+    /* counterclockwise: top → left → bottom → right → top */
+    @keyframes swirl1 {
+      0%   { transform: translate(  0%,  -8%) scale(1.00); }
+      25%  { transform: translate( -9%,   0%) scale(1.04); }
+      50%  { transform: translate(  0%,   8%) scale(0.97); }
+      75%  { transform: translate(  8%,   0%) scale(1.03); }
+      100% { transform: translate(  0%,  -8%) scale(1.00); }
+    }
+    /* blob2 starts at right — same CCW direction, different phase */
+    @keyframes swirl2 {
+      0%   { transform: translate(  9%,   0%) scale(1.00); }
+      25%  { transform: translate(  0%,  -9%) scale(1.05); }
+      50%  { transform: translate( -9%,   0%) scale(0.96); }
+      75%  { transform: translate(  0%,   8%) scale(1.03); }
+      100% { transform: translate(  9%,   0%) scale(1.00); }
+    }
+    /* blob3 starts at bottom — same CCW direction, tighter orbit */
+    @keyframes swirl3 {
+      0%   { transform: translate(  0%,   7%) scale(1.00); }
+      25%  { transform: translate(  7%,   0%) scale(1.06); }
+      50%  { transform: translate(  0%,  -8%) scale(0.94); }
+      75%  { transform: translate( -7%,   0%) scale(1.04); }
+      100% { transform: translate(  0%,   7%) scale(1.00); }
+    }
+
+    /* ── animated film grain ── */
+    #grain {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.06;
+    }
+
+    /* ── layout grid ── */
+    #ui {
+      position: fixed; inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: 1fr auto;
+      padding: clamp(1.5rem, 3vw, 2.8rem);
+      gap: 0;
+    }
+
+    /* top-left: location + condition */
+    #meta-top {
+      grid-column: 1; grid-row: 1;
+      align-self: start;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    #location-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: clamp(0.6rem, 1vw, 0.72rem);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+
+    #condition-line {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-style: normal;
+      font-weight: 300;
+      font-size: clamp(1rem, 2.2vw, 1.5rem);
+      color: rgba(255,255,255,0.82);
+      letter-spacing: 0.02em;
+    }
+
+    /* top-right: controls */
+    #controls {
+      grid-column: 2; grid-row: 1;
+      align-self: start;
+      pointer-events: all;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .ctrl-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: 0.6rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .ctrl-label span {
+      font-variant-numeric: tabular-nums;
+      opacity: 0.8;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 1px;
+      background: rgba(255,255,255,0.2);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 0 8px rgba(0,0,0,0.4);
+      transition: transform 0.15s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.4); }
+
+    .seg {
+      display: flex;
+      gap: 2px;
+    }
+    .seg button {
+      flex: 1;
+      padding: 0.28rem 0;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 2px;
+      color: rgba(255,255,255,0.3);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 0.58rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .seg button.active {
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.32);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .ctrl-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: -0.2rem 0;
+    }
+
+    #live-inputs {
+      display: none;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+    #live-inputs.visible { display: flex; }
+
+    #live-inputs input {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 3px;
+      padding: 0.3rem 0.6rem;
+      color: rgba(255,255,255,0.8);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    #live-inputs input::placeholder { color: rgba(255,255,255,0.25); }
+    #live-inputs input:focus { border-color: rgba(255,255,255,0.35); }
+
+    /* live toggle */
+    .live-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #live-toggle {
+      width: 26px; height: 14px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.15);
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #live-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.4);
+      transition: transform 0.18s, background 0.18s;
+    }
+    #live-toggle.on { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.3); }
+    #live-toggle.on::after { transform: translateX(12px); background: white; }
+
+    /* bottom-left: giant time */
+    #time-block {
+      grid-column: 1; grid-row: 2;
+      align-self: end;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    #time-display {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 300;
+      font-size: clamp(6rem, 18vw, 15rem);
+      line-height: 0.88;
+      letter-spacing: -0.02em;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 4px 40px rgba(0,0,0,0.2);
+    }
+
+    #date-line {
+      margin-top: 0.6rem;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: clamp(0.6rem, 1vw, 0.72rem);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.38);
+    }
+
+    /* bottom-right: data pills */
+    #meta-bottom {
+      grid-column: 2; grid-row: 2;
+      align-self: end;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+      pointer-events: none;
+    }
+
+    .data-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .data-key {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 100;
+      font-size: 0.58rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+    .data-val {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.9rem, 1.8vw, 1.1rem);
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* thin rule across bottom */
+    #rule {
+      position: fixed;
+      bottom: clamp(1.5rem, 3vw, 2.8rem);
+      left: clamp(1.5rem, 3vw, 2.8rem);
+      right: clamp(1.5rem, 3vw, 2.8rem);
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      z-index: 20;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="bg"></div>
+<div id="blob1"></div>
+<div id="blob2"></div>
+<div id="blob3"></div>
+<canvas id="grain"></canvas>
+
+<div id="rule"></div>
+
+<div id="ui">
+
+  <!-- top-left -->
+  <div id="meta-top">
+    <div id="location-label">Ambient Color Study</div>
+    <div id="condition-line">Clear sky, still air</div>
+  </div>
+
+  <!-- top-right -->
+  <div id="controls">
+
+    <div class="ctrl-group">
+      <div class="ctrl-label live-row">
+        Live
+        <button id="live-toggle" class="on"></button>
+      </div>
+      <div id="live-inputs">
+        <input id="city-input" type="text" placeholder="City…" spellcheck="false" autocomplete="off" />
+        <input id="api-key-input" type="password" placeholder="OWM API key…" spellcheck="false" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="ctrl-divider"></div>
+
+    <div class="ctrl-group" id="time-group">
+      <div class="ctrl-label">Time <span id="time-val">12:00</span></div>
+      <input type="range" id="time-slider" min="0" max="1439" value="720" />
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Weather</div>
+      <div class="seg" id="weather-seg">
+        <button data-v="clear" class="active">Clear</button>
+        <button data-v="cloud">Cloud</button>
+        <button data-v="rain">Rain</button>
+        <button data-v="snow">Snow</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Season</div>
+      <div class="seg" id="season-seg">
+        <button data-v="spring">Spr</button>
+        <button data-v="summer" class="active">Sum</button>
+        <button data-v="autumn">Aut</button>
+        <button data-v="winter">Win</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Wind <span id="wind-val">5 m/s</span></div>
+      <input type="range" id="wind-slider" min="0" max="30" value="5" step="0.5" />
+    </div>
+
+    <div class="ctrl-group" id="date-group">
+      <div class="ctrl-label">Date <span id="date-val">—</span></div>
+      <input type="range" id="date-slider" min="1" max="365" value="1" />
+    </div>
+
+  </div>
+
+  <!-- bottom-left -->
+  <div id="time-block">
+    <div id="time-display">12:00</div>
+    <div id="date-line">—</div>
+  </div>
+
+  <!-- bottom-right -->
+  <div id="meta-bottom">
+    <div class="data-row">
+      <div class="data-key">Season</div>
+      <div class="data-val" id="d-season">Summer</div>
+    </div>
+    <div class="data-row">
+      <div class="data-key">Condition</div>
+      <div class="data-val" id="d-weather">Clear</div>
+    </div>
+    <div class="data-row">
+      <div class="data-key">Wind</div>
+      <div class="data-val" id="d-wind">5 m/s</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── film grain ────────────────────────────────────────────────────────────────
+const grainCanvas = document.getElementById('grain');
+const gCtx = grainCanvas.getContext('2d');
+
+function resizeGrain() {
+  grainCanvas.width  = window.innerWidth;
+  grainCanvas.height = window.innerHeight;
+}
+resizeGrain();
+window.addEventListener('resize', resizeGrain);
+
+function drawGrain() {
+  const w = grainCanvas.width;
+  const h = grainCanvas.height;
+  const img = gCtx.createImageData(w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (Math.random() * 255) | 0;
+    d[i] = d[i+1] = d[i+2] = v;
+    d[i+3] = 255;
+  }
+  gCtx.putImageData(img, 0, 0);
+  requestAnimationFrame(drawGrain);
+}
+drawGrain();
+
+// ── state ─────────────────────────────────────────────────────────────────────
+let live            = false; // true = driven by OWM API
+let timeMinutes     = 720;
+let weatherMode     = 'clear';
+let season          = 'summer';
+let windSpeed       = 5;
+let manualDayOfYear = null;
+let clockTimer      = null;
+let fetchTimer      = null;
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const dateSlider  = document.getElementById('date-slider');
+const dateVal     = document.getElementById('date-val');
+const liveToggle  = document.getElementById('live-toggle');
+const liveInputs  = document.getElementById('live-inputs');
+const cityInput   = document.getElementById('city-input');
+const apiKeyInput = document.getElementById('api-key-input');
+const timeGroup   = document.getElementById('time-group');
+const bg          = document.getElementById('bg');
+const blob1       = document.getElementById('blob1');
+const blob2       = document.getElementById('blob2');
+const blob3       = document.getElementById('blob3');
+const timeDisplay = document.getElementById('time-display');
+const dateLine    = document.getElementById('date-line');
+const condLine    = document.getElementById('condition-line');
+const dSeason     = document.getElementById('d-season');
+const dWeather    = document.getElementById('d-weather');
+const dWind       = document.getElementById('d-wind');
+const timeSlider  = document.getElementById('time-slider');
+const timeVal     = document.getElementById('time-val');
+const windSlider  = document.getElementById('wind-slider');
+const windVal     = document.getElementById('wind-val');
+// ── color math ────────────────────────────────────────────────────────────────
+
+// Colorado, Denver ~39.5°N
+const CO_LAT = 39.5 * Math.PI / 180;
+
+// Returns sunrise and sunset in decimal hours (local solar time ≈ clock time)
+// Uses standard declination + hour angle formula
+function getSunTimes(doy) {
+  const decl = -23.45 * (Math.PI / 180) *
+    Math.cos((2 * Math.PI / 365) * (doy + 10));
+  const cosHA = -Math.tan(CO_LAT) * Math.tan(decl);
+  const halfDay = Math.acos(Math.max(-1, Math.min(1, cosHA))) * (12 / Math.PI);
+  return { rise: 12 - halfDay, set: 12 + halfDay };
+}
+
+// Brightness 0–1 based on time of day and Colorado solar arc for that doy
+function timeToBri(minutes, doy) {
+  const h = minutes / 60;
+  const { rise, set } = getSunTimes(doy);
+
+  const NIGHT      = 0.06;  // deep night floor
+  const DAWN_DUR   = 1.4;   // hours of civil twilight each side
+
+  // Deep night
+  if (h <= rise - DAWN_DUR || h >= set + DAWN_DUR) return NIGHT;
+
+  // Daytime arc — sinusoidal peak at solar noon
+  if (h >= rise && h <= set) {
+    const t = (h - rise) / (set - rise);
+    return NIGHT + (0.74 - NIGHT) * Math.pow(Math.sin(t * Math.PI), 0.45);
+  }
+
+  // Pre-dawn twilight
+  if (h < rise) {
+    const t = (h - (rise - DAWN_DUR)) / DAWN_DUR;
+    return lerp(NIGHT, NIGHT + 0.06, Math.pow(t, 1.8));
+  }
+
+  // Post-sunset twilight
+  const t = (h - set) / DAWN_DUR;
+  return lerp(NIGHT + 0.06, NIGHT, Math.pow(t, 0.6));
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpHue(a, b, t) {
+  let d = ((b - a) % 360 + 360) % 360;
+  if (d > 180) d -= 360;
+  return ((a + d * t) % 360 + 360) % 360;
+}
+
+// Each season has early and late palette endpoints.
+// The real calendar date interpolates between them.
+const SEASONS = {
+  spring: {
+    // early: still snowy, barely budding — icy whites, faint green tinge
+    early: { base: 195, b2: 120, b3: 200, sat: 22, briBoost:  0.12 },
+    // late: full bloom — coral tulip, spring green, rose
+    late:  { base:  14, b2: 115, b3: 335, sat: 72, briBoost:  0.08 },
+  },
+  summer: {
+    // early: fresh blue sky, deep summer green, golden light
+    early: { base: 205, b2: 125, b3:  42, sat: 72, briBoost:  0.08 },
+    // late: still warm but golden-coral as days shorten
+    late:  { base: 205, b2:  42, b3: 358, sat: 78, briBoost:  0.10 },
+  },
+  autumn: {
+    // early: green still lingers, yellow-orange beginning
+    early: { base:  68, b2: 112, b3:  38, sat: 68, briBoost:  0.04 },
+    // late: no green, deep brown-orange, first icy whites creeping in
+    late:  { base:  20, b2:  28, b3: 198, sat: 52, briBoost: -0.06 },
+  },
+  winter: {
+    // early Dec: festive aurora — navy, electric teal, crimson
+    early: { base: 225, b2: 165, b3:   5, sat: 78, briBoost: -0.03 },
+    // mid Jan–Feb: deep winter, all snow — icy white, pale blue, near-white
+    mid:   { base: 208, b2: 200, b3: 195, sat:  9, briBoost:  0.10 },
+    // late Mar: aurora returning, still cold but gaining colour
+    late:  { base: 222, b2: 165, b3:   5, sat: 62, briBoost: -0.06 },
+  },
+};
+
+// Day-of-year → which season and how far through it (0 = early, 1 = late)
+function getDayOfYear(date) {
+  return Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+}
+
+function getSeasonInfo(date) {
+  const doy = getDayOfYear(date);
+  const SPRING = 79, SUMMER = 172, AUTUMN = 265, WINTER = 355;
+  if (doy >= SPRING && doy < SUMMER)
+    return { key: 'spring', progress: (doy - SPRING) / (SUMMER - SPRING) };
+  if (doy >= SUMMER && doy < AUTUMN)
+    return { key: 'summer', progress: (doy - SUMMER) / (AUTUMN - SUMMER) };
+  if (doy >= AUTUMN && doy < WINTER)
+    return { key: 'autumn', progress: (doy - AUTUMN) / (WINTER - AUTUMN) };
+  const wLen = (365 - WINTER) + SPRING;
+  const wDay = doy >= WINTER ? doy - WINTER : doy + (365 - WINTER);
+  return { key: 'winter', progress: Math.min(wDay / wLen, 1) };
+}
+
+function interpolatedPalette(key, progress) {
+  const s = SEASONS[key];
+  // if a mid point exists, do piecewise: early→mid (0–0.5), mid→late (0.5–1)
+  if (s.mid) {
+    const a = progress < 0.5 ? s.early : s.mid;
+    const b = progress < 0.5 ? s.mid   : s.late;
+    const t = progress < 0.5 ? progress * 2 : (progress - 0.5) * 2;
+    return {
+      base:     lerpHue(a.base, b.base, t),
+      b2:       lerpHue(a.b2,   b.b2,   t),
+      b3:       lerpHue(a.b3,   b.b3,   t),
+      sat:      lerp(a.sat,      b.sat,      t),
+      briBoost: lerp(a.briBoost, b.briBoost, t),
+    };
+  }
+  return {
+    base:     lerpHue(s.early.base, s.late.base, progress),
+    b2:       lerpHue(s.early.b2,   s.late.b2,   progress),
+    b3:       lerpHue(s.early.b3,   s.late.b3,   progress),
+    sat:      lerp(s.early.sat,      s.late.sat,      progress),
+    briBoost: lerp(s.early.briBoost, s.late.briBoost, progress),
+  };
+}
+
+const WEATHER = {
+  clear: { satMul: 1.00, hueShift:   0 },
+  cloud: { satMul: 0.38, hueShift:  -8 },
+  rain:  { satMul: 0.55, hueShift:  18 },
+  snow:  { satMul: 0.20, hueShift:  30 },
+};
+
+function timeHueOffset(m) {
+  return Math.sin((m / 1440) * Math.PI * 2) * 20;
+}
+
+const WEATHER_LABEL = { clear: 'Clear sky', cloud: 'Overcast', rain: 'Rain', snow: 'Snow' };
+const WIND_LABEL = s => s < 1 ? 'Still air' : s < 4 ? 'Light breeze' : s < 9 ? 'Gentle breeze' : s < 16 ? 'Strong wind' : 'Gale';
+const PHASE_LABEL = t => t < 0.25 ? 'Early' : t < 0.6 ? 'Mid' : 'Late';
+
+function windToDur(s) {
+  const t = Math.min(s, 30) / 30; // 0–1
+  // Full-circle orbit: calm = one lazy revolution in 40s, gale = 4s
+  // Irrational ratios so the three blobs never re-sync
+  const base = 40 - t * 36;
+  document.documentElement.style.setProperty('--dur1', `${(base).toFixed(2)}s`);
+  document.documentElement.style.setProperty('--dur2', `${(base * 0.61).toFixed(2)}s`);
+  document.documentElement.style.setProperty('--dur3', `${(base * 0.38).toFixed(2)}s`);
+}
+
+function hmmStr(m) {
+  const h = Math.floor(m / 60) % 24;
+  const mn = m % 60;
+  return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+}
+
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function dateStr(d) {
+  return `${DAYS[d.getDay()]} — ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// ── render ────────────────────────────────────────────────────────────────────
+function render() {
+  const now = new Date();
+
+  // Build a fake date from the manual day-of-year slider if active
+  let refDate = now;
+  if (manualDayOfYear !== null) {
+    refDate = new Date(now.getFullYear(), 0, manualDayOfYear);
+  }
+
+  const auto = getSeasonInfo(refDate);
+
+  // Season buttons can still override which season is shown;
+  // progress always tracks the (possibly manual) date
+  const activeKey = season;
+  const progress  = (auto.key === activeKey) ? auto.progress : 0.5;
+
+  const pal  = interpolatedPalette(activeKey, progress);
+  const wx   = WEATHER[weatherMode];
+  const doy  = manualDayOfYear || getDayOfYear(refDate);
+  const bri  = Math.max(0.05, Math.min(0.92, timeToBri(timeMinutes, doy) + pal.briBoost));
+
+  const timeOff = timeHueOffset(timeMinutes);
+  const h1 = (pal.base + timeOff + wx.hueShift + 360) % 360;
+  const h2 = (pal.b2   + timeOff * 0.5          + 360) % 360;
+  const h3 = (pal.b3   - timeOff * 0.3          + 360) % 360;
+
+  const sat   = pal.sat * wx.satMul;
+  const bgL   = Math.round(bri * 30);
+  const blobL = Math.round(bri * 62);
+
+  bg.style.background    = `hsl(${h1}, ${Math.round(sat * 0.5)}%, ${bgL}%)`;
+  blob1.style.background = `hsl(${h1}, ${Math.round(sat)}%, ${blobL}%)`;
+  blob2.style.background = `hsl(${h2}, ${Math.round(sat * 0.9)}%, ${Math.round(blobL * 1.08)}%)`;
+  blob3.style.background = `hsl(${h3}, ${Math.round(sat * 0.8)}%, ${Math.round(blobL * 0.85)}%)`;
+
+  windToDur(windSpeed);
+
+  // typography
+  timeDisplay.textContent = hmmStr(timeMinutes);
+  dateLine.textContent = dateStr(refDate);
+
+  const phase = PHASE_LABEL(progress);
+  const seasonName = activeKey.charAt(0).toUpperCase() + activeKey.slice(1);
+  const windL = WIND_LABEL(windSpeed);
+  const { rise, set } = getSunTimes(doy);
+  const riseStr = hmmStr(Math.round(rise * 60));
+  const setStr  = hmmStr(Math.round(set  * 60));
+  condLine.textContent = `${WEATHER_LABEL[weatherMode]}, ${windL.toLowerCase()} · ☀ ${riseStr}–${setStr}`;
+
+  dSeason.textContent  = `${phase} ${seasonName}`;
+  dWeather.textContent = WEATHER_LABEL[weatherMode];
+  dWind.textContent    = `${windSpeed} m/s`;
+}
+
+// ── live mode (time + weather from OWM) ──────────────────────────────────────
+
+function owmCodeToMode(id) {
+  if (id === 800)              return 'clear';
+  if (id >= 801 && id <= 804) return 'cloud';
+  if (id >= 600 && id <= 699) return 'snow';
+  if (id >= 200 && id <= 599) return 'rain';
+  return 'clear';
+}
+
+// called every minute while live, to tick the local clock
+function liveTick() {
+  if (!live) return;
+  // keep timeMinutes in sync with wall clock (live fetch already set the offset)
+  const now = new Date();
+  timeMinutes = now.getHours() * 60 + now.getMinutes();
+  timeSlider.value = timeMinutes;
+  timeVal.textContent = hmmStr(timeMinutes);
+  render();
+}
+
+async function fetchWeather() {
+  const key  = localStorage.getItem('owm_api_key') || apiKeyInput.value.trim();
+  const city = cityInput.value.trim() || 'New York';
+  if (!key) return;
+
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`
+    );
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+
+    localStorage.setItem('owm_api_key', key);
+
+    // local time at city from API  (dt is UTC unix, timezone is offset in seconds)
+    const localEpoch = (d.dt + d.timezone) * 1000;
+    const localDate  = new Date(localEpoch);
+    timeMinutes      = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
+    manualDayOfYear  = null; // use real date
+
+    // weather + wind
+    weatherMode = owmCodeToMode(d.weather[0].id);
+    windSpeed   = Math.round(d.wind.speed * 10) / 10;
+
+    // sync all controls to live values
+    timeSlider.value = timeMinutes;
+    timeVal.textContent = hmmStr(timeMinutes);
+    windSlider.value = windSpeed;
+    windVal.textContent = `${windSpeed} m/s`;
+    document.getElementById('weather-seg').querySelectorAll('button').forEach(b =>
+      b.classList.toggle('active', b.dataset.v === weatherMode));
+    const info = getSeasonInfo(new Date());
+    season = info.key;
+    document.getElementById('season-seg').querySelectorAll('button').forEach(b =>
+      b.classList.toggle('active', b.dataset.v === season));
+    const doy = getDayOfYear(new Date());
+    dateSlider.value = doy;
+    dateVal.textContent = dayOfYearToLabel(doy);
+
+    document.getElementById('location-label').textContent = d.name.toUpperCase();
+    render();
+  } catch (e) {
+    console.warn('Weather fetch failed', e);
+  }
+}
+
+function setLive(on) {
+  live = on;
+  liveToggle.classList.toggle('on', on);
+  liveInputs.classList.toggle('visible', on);
+
+  const manualOpacity = on ? '0.35' : '1';
+  const manualPointer = on ? 'none' : '';
+  ['time-group', 'date-group'].forEach(id => {
+    document.getElementById(id).style.opacity = manualOpacity;
+  });
+  ['weather-seg', 'season-seg'].forEach(id => {
+    document.getElementById(id).style.opacity = manualOpacity;
+    document.getElementById(id).style.pointerEvents = manualPointer;
+  });
+  const wg = document.getElementById('wind-slider').closest('.ctrl-group');
+  wg.style.opacity = manualOpacity;
+  document.getElementById('wind-slider').disabled = on;
+
+  if (on) {
+    const stored = localStorage.getItem('owm_api_key');
+    if (stored) apiKeyInput.value = stored;
+    fetchWeather();
+    fetchTimer = setInterval(fetchWeather, 10 * 60 * 1000);
+    clockTimer = setInterval(liveTick, 60 * 1000);
+  } else {
+    clearInterval(fetchTimer);
+    clearInterval(clockTimer);
+    document.getElementById('location-label').textContent = 'Ambient Color Study';
+  }
+}
+
+function killLive() { if (live) setLive(false); }
+
+// ── controls ──────────────────────────────────────────────────────────────────
+liveToggle.addEventListener('click', () => setLive(!live));
+
+[cityInput, apiKeyInput].forEach(el =>
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') fetchWeather(); })
+);
+
+timeSlider.addEventListener('input', () => {
+  killLive();
+  timeMinutes = parseInt(timeSlider.value);
+  timeVal.textContent = hmmStr(timeMinutes);
+  render();
+});
+
+windSlider.addEventListener('input', () => {
+  killLive();
+  windSpeed = parseFloat(windSlider.value);
+  windVal.textContent = `${windSpeed} m/s`;
+  render();
+});
+
+function makeSegGroup(id, setter) {
+  const group = document.getElementById(id);
+  group.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      killLive();
+      group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      setter(btn.dataset.v);
+      render();
+    });
+  });
+}
+makeSegGroup('weather-seg', v => weatherMode = v);
+makeSegGroup('season-seg',  v => { season = v; render(); });
+
+// Short month names for the date slider label
+const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dayOfYearToLabel(doy) {
+  const d = new Date(new Date().getFullYear(), 0, doy);
+  return `${MON_SHORT[d.getMonth()]} ${d.getDate()}`;
+}
+
+dateSlider.addEventListener('input', () => {
+  killLive();
+  manualDayOfYear = parseInt(dateSlider.value);
+  dateVal.textContent = dayOfYearToLabel(manualDayOfYear);
+  // auto-sync season buttons to wherever the slider lands
+  const info = getSeasonInfo(new Date(new Date().getFullYear(), 0, manualDayOfYear));
+  season = info.key;
+  document.getElementById('season-seg').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.v === season);
+  });
+  render();
+});
+
+// ── init ──────────────────────────────────────────────────────────────────────
+const now0   = new Date();
+const todayDoy = getDayOfYear(now0);
+dateSlider.value = todayDoy;
+dateVal.textContent = dayOfYearToLabel(todayDoy);
+
+// seed time from system clock
+timeMinutes = now0.getHours() * 60 + now0.getMinutes();
+timeSlider.value = timeMinutes;
+timeVal.textContent = hmmStr(timeMinutes);
+
+// auto-detect season
+const autoSeason = getSeasonInfo(now0);
+season = autoSeason.key;
+document.getElementById('season-seg').querySelectorAll('button').forEach(b =>
+  b.classList.toggle('active', b.dataset.v === season)
+);
+
+// start in manual mode
+render();
+</script>
+</body>
+</html>
