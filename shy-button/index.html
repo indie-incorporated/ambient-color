@@ -124,6 +124,7 @@
     }
 
     function placeButton(b) {
+      b.y = Math.max(80, b.y);
       b.el.style.left = (b.x - 14) + 'px';
       b.el.style.top  = (b.y - 14) + 'px';
     }
