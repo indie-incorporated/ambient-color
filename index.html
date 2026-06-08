@@ -285,6 +285,23 @@
       color: var(--mid);
     }
 
+    /* ── pills ── */
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      color: var(--mid);
+    }
+
     @media (max-width: 700px) {
       .wrap { padding: 0 24px; }
       .projects { grid-template-columns: 1fr; }
@@ -327,9 +344,11 @@
           <div>
             <p class="project-code">II–001</p>
             <h3 class="project-name">The Shy Button</h3>
-            <p class="project-meta">
-              2024
-            </p>
+            <p class="project-meta">2024</p>
+            <div class="pills">
+              <span class="pill">Interaction Design</span>
+              <span class="pill">Tortuous UX</span>
+            </div>
           </div>
           <span class="project-cta">View →</span>
         </div>
@@ -341,9 +360,13 @@
           <div>
             <p class="project-code">II–002</p>
             <h3 class="project-name">Ambient Color</h3>
-            <p class="project-meta">
-              2024
-            </p>
+            <p class="project-meta">2024</p>
+            <div class="pills">
+              <span class="pill">Data Visualization</span>
+              <span class="pill">Ambient Computing</span>
+              <span class="pill">API Integration</span>
+              <span class="pill">Real-Time Data</span>
+            </div>
           </div>
           <span class="project-cta">View →</span>
         </div>
