@@ -166,7 +166,8 @@
     }
 
     document.addEventListener('click', (e) => {
-      if (e.target.tagName === 'A') return;
+      if (e.target.closest('a, [data-nav]')) return;
+      if (e.clientY < 60) return;
       e.preventDefault();
       attemptsLabel.textContent = '🤖';
       attemptsLabel.classList.add('show');
