@@ -148,7 +148,7 @@
         if (Math.hypot(dx, dy) < FLEE_RADIUS) {
           const angle = Math.atan2(dy, dx) + b.angleOffset;
           const pad = 20;
-          const topPad = 60;
+          const topPad = 80;
           b.x = Math.max(pad, Math.min(window.innerWidth - pad,  b.x - Math.cos(angle) * FLEE_DISTANCE));
           b.y = Math.max(topPad, Math.min(window.innerHeight - pad, b.y - Math.sin(angle) * FLEE_DISTANCE));
           placeButton(b);
@@ -157,7 +157,7 @@
     });
 
     function teleportButton(b, fx, fy) {
-      const pad = 20; const topPad = 60; let nx, ny;
+      const pad = 20; const topPad = 80; let nx, ny;
       do { nx = pad + Math.random()*(window.innerWidth-pad*2); ny = topPad + Math.random()*(window.innerHeight-topPad-pad); }
       while (Math.hypot(nx-fx, ny-fy) < 200);
       b.x = nx; b.y = ny;
@@ -167,7 +167,7 @@
 
     document.addEventListener('click', (e) => {
       if (e.target.closest('a, [data-nav]')) return;
-      if (e.clientY < 60) return;
+      if (e.clientY < 80) return;
       e.preventDefault();
       attemptsLabel.textContent = '🤖';
       attemptsLabel.classList.add('show');
