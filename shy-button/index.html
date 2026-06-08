@@ -146,16 +146,17 @@
         if (Math.hypot(dx, dy) < FLEE_RADIUS) {
           const angle = Math.atan2(dy, dx) + b.angleOffset;
           const pad = 20;
+          const topPad = 60;
           b.x = Math.max(pad, Math.min(window.innerWidth - pad,  b.x - Math.cos(angle) * FLEE_DISTANCE));
-          b.y = Math.max(pad, Math.min(window.innerHeight - pad, b.y - Math.sin(angle) * FLEE_DISTANCE));
+          b.y = Math.max(topPad, Math.min(window.innerHeight - pad, b.y - Math.sin(angle) * FLEE_DISTANCE));
           placeButton(b);
         }
       });
     });
 
     function teleportButton(b, fx, fy) {
-      const pad = 20; let nx, ny;
-      do { nx = pad + Math.random()*(window.innerWidth-pad*2); ny = pad + Math.random()*(window.innerHeight-pad*2); }
+      const pad = 20; const topPad = 60; let nx, ny;
+      do { nx = pad + Math.random()*(window.innerWidth-pad*2); ny = topPad + Math.random()*(window.innerHeight-topPad-pad); }
       while (Math.hypot(nx-fx, ny-fy) < 200);
       b.x = nx; b.y = ny;
       b.el.style.transition = 'none'; placeButton(b);
